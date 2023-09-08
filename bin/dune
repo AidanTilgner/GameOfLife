@@ -1,0 +1,4 @@
+(executable
+ (public_name GameOfLife)
+ (name main)
+ (libraries GameOfLife))
