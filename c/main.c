@@ -177,7 +177,6 @@ void updateBoard(SDL_Renderer *renderer, GameState *GameState) {
 
   for (int r = 0; r < GRID_WIDTH; r++) {
     for (int c = 0; c < GRID_HEIGHT; c++) {
-      printf("Updating %d,%d", r, c);
     }
   }
 }
