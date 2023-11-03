@@ -13,7 +13,7 @@
 #define SPACE_SIZE 20
 #define GRID_WIDTH (WIDTH / SPACE_SIZE)
 #define GRID_HEIGHT (WIDTH / SPACE_SIZE)
-#define FPS 10
+#define FPS 5
 
 typedef struct {
   int alive;
@@ -40,16 +40,24 @@ int main(int argc, char *argv[]) {
     return 1;
   };
 
-  Cell initial_cells[] = {{
-                              .alive = 1,
-                              .x = 0,
-                              .y = 0,
-                          },
-                          {
-                              .alive = 1,
-                              .x = 20,
-                              .y = 24,
-                          }};
+  Cell initial_cells[] = {
+      {
+          .alive = 1,
+          .x = 2,
+          .y = 2,
+      },
+      {
+          .alive = 1,
+          .x = 2,
+          .y = 3,
+      },
+      {
+          .alive = 1,
+          .x = 2,
+          .y = 4,
+      },
+  };
+
   int initial_cell_length = sizeof(initial_cells) / sizeof(initial_cells[0]);
 
   const int width = WIDTH;
@@ -66,7 +74,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Create Renderer
   SDL_Renderer *renderer =
       SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
@@ -82,23 +89,27 @@ int main(int argc, char *argv[]) {
   GameState *gamestate =
       getInitialGameState(1, initial_cells, initial_cell_length);
 
+  int generation = 0;
+
   while (!quit) {
     while (SDL_PollEvent(&e) != 0) {
       if (e.type == SDL_QUIT) {
         quit = 1;
       }
     }
-
-    SDL_Delay(1000 / FPS);
+    printf("Generation %d\n\n", generation);
+    generation++;
+    updateBoard(renderer, gamestate);
 
     SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
     SDL_RenderClear(renderer);
 
     drawGrid(renderer, grid_width, grid_height, space_size);
-    updateBoard(renderer, gamestate);
     renderBoard(renderer, *gamestate);
 
     SDL_RenderPresent(renderer);
+
+    SDL_Delay(1000 / FPS);
   }
 
   SDL_DestroyRenderer(renderer);
@@ -110,7 +121,6 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-// #403D3C
 void drawGrid(SDL_Renderer *renderer, int grid_width, int grid_height,
               int space_size) {
   SDL_SetRenderDrawColor(renderer, 0x40, 0x3D, 0x3C, 0xFF);
@@ -155,16 +165,16 @@ GameState *getInitialGameState(int first_generation, Cell *initial_cells,
 void freeGameState(GameState *gamestate) { free(gamestate); }
 
 void renderBoard(SDL_Renderer *renderer, GameState GameState) {
-  SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-
   for (int r = 0; r < GRID_WIDTH; r++) {
     for (int c = 0; c < GRID_HEIGHT; c++) {
       Cell cell = GameState.world[r][c];
+      SDL_Rect cellRect = {.h = SPACE_SIZE,
+                           .w = SPACE_SIZE,
+                           .x = r * SPACE_SIZE,
+                           .y = c * SPACE_SIZE};
+
       if (cell.alive) {
-        SDL_Rect cellRect = {.h = SPACE_SIZE,
-                             .w = SPACE_SIZE,
-                             .x = c * SPACE_SIZE,
-                             .y = c * SPACE_SIZE};
+        SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
         SDL_RenderFillRect(renderer, &cellRect);
       }
     }
@@ -172,11 +182,42 @@ void renderBoard(SDL_Renderer *renderer, GameState GameState) {
 }
 
 void updateBoard(SDL_Renderer *renderer, GameState *GameState) {
+  Cell newWorld[GRID_HEIGHT][GRID_WIDTH];
 
-  SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+  for (int r = 0; r < GRID_HEIGHT; r++) {
+    for (int c = 0; c < GRID_WIDTH; c++) {
+      Cell cell = GameState->world[r][c];
+
+      int numNeighborsAlive = 0;
+      for (int dr = -1; dr <= 1; dr++) {
+        for (int dc = -1; dc <= 1; dc++) {
+          if (dr == 0 && dc == 0)
+            continue;
+
+          int newR = r + dr;
+          int newC = c + dc;
+
+          newR = (newR + GRID_WIDTH) % GRID_WIDTH;
+          newC = (newC + GRID_HEIGHT) % GRID_HEIGHT;
+
+          if (GameState->world[newR][newC].alive) {
+            numNeighborsAlive++;
+          }
+        }
+      }
+
+      if (numNeighborsAlive == 3 ||
+          (numNeighborsAlive == 2 && GameState->world[r][c].alive)) {
+        newWorld[r][c].alive = 1;
+      } else {
+        newWorld[r][c].alive = 0;
+      }
+    }
+  }
 
   for (int r = 0; r < GRID_WIDTH; r++) {
     for (int c = 0; c < GRID_HEIGHT; c++) {
+      GameState->world[r][c] = newWorld[r][c];
     }
   }
 }
